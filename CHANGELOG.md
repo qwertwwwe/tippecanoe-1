@@ -1,3 +1,128 @@
+## 1.36.0
+
+* Update Wagyu to version 0.5.0
+
+## 1.35.0
+
+* Fix calculation of mean when accumulating attributes in clusters
+
+## 1.34.6
+
+* Fix crash when there are null entries in the metadata table
+
+## 1.34.5
+
+* Fix line numbers in GeoJSON feature parsing error messages
+
+## 1.34.4
+
+* Be careful to avoid undefined behavior from shifting negative numbers
+
+## 1.34.3
+
+* Add an option to keep intersection nodes from being simplified away
+
+## 1.34.2
+
+* Be more consistent about when longitudes beyond 180 are allowed.
+  Now if the entire feature is beyond 180, it will still appear.
+
+## 1.34.1
+
+* Don't run shell filters if the current zoom is below the minzoom
+* Fix -Z and -z for tile directories in tile-join and tippecanoe-decode
+* Return a successful error status for --help and --version
+
+## 1.34.0
+
+* Record the command line options in the tileset metadata
+
+## 1.33.0
+
+* MultiLineStrings were previously ignored in Geobuf input
+
+## 1.32.12
+
+* Accept .mvt as well as .pbf in directories of tiles
+* Allow tippecanoe-decode and tile-join of directories with no metadata
+
+## 1.32.11
+* Don't let attribute exclusion apply to the attribute that has been specified
+  to become the feature ID
+
+## 1.32.10
+
+* Fix a bug that disallowed a per-feature minzoom of 0
+
+## 1.32.9
+
+* Limit tile detail to 30 and buffer size to 127 to prevent coordinate
+  delta overflow in vector tiles.
+
+## 1.32.8
+
+* Better error message if the output tileset already exists
+
+## 1.32.7
+
+* Point features may now be coalesced into MultiPoint features with --coalesce.
+* Add --hilbert option to put features in Hilbert Curve sequence
+
+## 1.32.6
+
+* Make it an error, not a warning, to have missing coordinates for a point
+
+## 1.32.5
+
+* Use less memory on lines and polygons that are too small for the tile
+* Fix coordinate rounding problem that was causing --grid-low-zooms grids
+  to be lost at low zooms if the original polygons were not aligned to
+  tile boundaries
+
+## 1.32.4
+
+* Ignore leading zeroes when converting string attributes to feature IDs
+
+## 1.32.3
+
+* Add an option to convert stringified number feature IDs to numbers
+* Add an option to use a specified feature attribute as the feature ID
+
+## 1.32.2
+
+* Warn in tile-join if tilesets being joined have inconsistent maxzooms
+
+## 1.32.1
+
+* Fix null pointer crash when reading filter output that does not
+  tag features with their extent
+* Add `--clip-bounding-box` option to clip input geometry
+
+## 1.32.0
+
+* Fix a bug that allowed coalescing of features with mismatched attributes
+  if they had been passed through a shell prefilter
+
+## 1.31.7
+
+* Create the output tile directory even if there are no valid features
+
+## 1.31.6
+
+* Issue an error message in tile-join if minzoom is greater than maxzoom
+
+## 1.31.5
+
+* Add options to change the tilestats limits
+
+## 1.31.4
+
+* Keep tile-join from generating a tileset name longer than 255 characters
+
+## 1.31.3
+
+* Fix the missing filename in JSON parsing warning messages
+
 ## 1.31.2
 
 * Don't accept anything inside another JSON object's properties as a

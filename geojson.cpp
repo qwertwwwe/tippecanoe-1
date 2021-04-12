@@ -113,6 +113,13 @@ int serialize_geojson_feature(struct serialization_state *sst, json_object *geom
 						fprintf(stderr, "Warning: Can't represent non-integer feature ID %s\n", id->string);
 						warned_frac = true;
 					}
+				} else if (std::to_string(id_value) != id->string) {
+					static bool warned = false;
+
+					if (!warned) {
+						fprintf(stderr, "Warning: Can't represent too-large feature ID %s\n", id->string);
+						warned = true;
+					}
 				} else {
 					has_id = true;
 				}
@@ -125,13 +132,41 @@ int serialize_geojson_feature(struct serialization_state *sst, json_object *geom
 				}
 			}
 		} else {
-			static bool warned_nan = false;
+			bool converted = false;
 
-			if (!warned_nan) {
-				char *s = json_stringify(id);
-				fprintf(stderr, "Warning: Can't represent non-numeric feature ID %s\n", s);
-				free(s);  // stringify
-				warned_nan = true;
+			if (additional[A_CONVERT_NUMERIC_IDS] && id->type == JSON_STRING) {
+				char *err = NULL;
+				id_value = strtoull(id->string, &err, 10);
+
+				if (err != NULL && *err != '\0') {
+					static bool warned_frac = false;
+
+					if (!warned_frac) {
+						fprintf(stderr, "Warning: Can't represent non-integer feature ID %s\n", id->string);
+						warned_frac = true;
+					}
+				} else if (std::to_string(id_value) != id->string) {
+					static bool warned = false;
+
+					if (!warned) {
+						fprintf(stderr, "Warning: Can't represent too-large feature ID %s\n", id->string);
+						warned = true;
+					}
+				} else {
+					has_id = true;
+					converted = true;
+				}
+			}
+
+			if (!converted) {
+				static bool warned_nan = false;
+
+				if (!warned_nan) {
+					char *s = json_stringify(id);
+					fprintf(stderr, "Warning: Can't represent non-numeric feature ID %s\n", s);
+					free(s);  // stringify
+					warned_nan = true;
+				}
 			}
 		}
 	}
@@ -234,6 +269,7 @@ struct json_serialize_action : json_feature_action {
 	std::string layername;
 
 	int add_feature(json_object *geometry, bool geometrycollection, json_object *properties, json_object *id, json_object *tippecanoe, json_object *feature) {
+		sst->line = geometry->parser->line;
 		if (geometrycollection) {
 			int ret = 1;
 			for (size_t g = 0; g < geometry->length; g++) {
@@ -252,6 +288,7 @@ struct json_serialize_action : json_feature_action {
 
 void parse_json(struct serialization_state *sst, json_pull *jp, int layer, std::string layername) {
 	json_serialize_action jsa;
+	jsa.fname = sst->fname;
 	jsa.sst = sst;
 	jsa.layer = layer;
 	jsa.layername = layername;

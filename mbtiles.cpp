@@ -19,6 +19,10 @@
 #include "write_json.hpp"
 #include "version.hpp"
 
+size_t max_tilestats_attributes = 1000;
+size_t max_tilestats_sample_values = 1000;
+size_t max_tilestats_values = 100;
+
 sqlite3 *mbtiles_open(char *dbname, char **argv, int forcetable) {
 	sqlite3 *outdb;
 
@@ -41,7 +45,8 @@ sqlite3 *mbtiles_open(char *dbname, char **argv, int forcetable) {
 		exit(EXIT_FAILURE);
 	}
 	if (sqlite3_exec(outdb, "CREATE TABLE metadata (name text, value text);", NULL, NULL, &err) != SQLITE_OK) {
-		fprintf(stderr, "%s: create metadata table: %s\n", argv[0], err);
+		fprintf(stderr, "%s: Tileset \"%s\" already exists. You can use --force if you want to delete the old tileset.\n", argv[0], dbname);
+		fprintf(stderr, "%s: %s\n", argv[0], err);
 		if (!forcetable) {
 			exit(EXIT_FAILURE);
 		}
@@ -125,10 +130,7 @@ void tilestats(std::map<std::string, layermap_entry> const &layermap1, size_t el
 	state.json_write_string("layers");
 	state.json_write_array();
 
-	bool first = true;
 	for (auto layer : layermap) {
-		first = false;
-
 		state.nospace = true;
 		state.json_write_hash();
 
@@ -152,8 +154,8 @@ void tilestats(std::map<std::string, layermap_entry> const &layermap1, size_t el
 		state.json_write_string(geomtype);
 
 		size_t attrib_count = layer.second.file_keys.size();
-		if (attrib_count > 1000) {
-			attrib_count = 1000;
+		if (attrib_count > max_tilestats_attributes) {
+			attrib_count = max_tilestats_attributes;
 		}
 
 		state.nospace = true;
@@ -180,8 +182,8 @@ void tilestats(std::map<std::string, layermap_entry> const &layermap1, size_t el
 			state.json_write_string(attribute.first);
 
 			size_t val_count = attribute.second.sample_values.size();
-			if (val_count > 1000) {
-				val_count = 1000;
+			if (val_count > max_tilestats_sample_values) {
+				val_count = max_tilestats_sample_values;
 			}
 
 			state.nospace = true;
@@ -265,7 +267,7 @@ void tilestats(std::map<std::string, layermap_entry> const &layermap1, size_t el
 	state.json_end_hash();
 }
 
-void mbtiles_write_metadata(sqlite3 *outdb, const char *outdir, const char *fname, int minzoom, int maxzoom, double minlat, double minlon, double maxlat, double maxlon, double midlat, double midlon, int forcetable, const char *attribution, std::map<std::string, layermap_entry> const &layermap, bool vector, const char *description, bool do_tilestats, std::map<std::string, std::string> const &attribute_descriptions, std::string const &program) {
+void mbtiles_write_metadata(sqlite3 *outdb, const char *outdir, const char *fname, int minzoom, int maxzoom, double minlat, double minlon, double maxlat, double maxlon, double midlat, double midlon, int forcetable, const char *attribution, std::map<std::string, layermap_entry> const &layermap, bool vector, const char *description, bool do_tilestats, std::map<std::string, std::string> const &attribute_descriptions, std::string const &program, std::string const &commandline) {
 	char *sql, *err;
 
 	sqlite3 *db = outdb;
@@ -375,7 +377,16 @@ void mbtiles_write_metadata(sqlite3 *outdb, const char *outdir, const char *fnam
 	std::string version = program + " " + VERSION;
 	sql = sqlite3_mprintf("INSERT INTO metadata (name, value) VALUES ('generator', %Q);", version.c_str());
 	if (sqlite3_exec(db, sql, NULL, NULL, &err) != SQLITE_OK) {
-		fprintf(stderr, "set type: %s\n", err);
+		fprintf(stderr, "set version: %s\n", err);
+		if (!forcetable) {
+			exit(EXIT_FAILURE);
+		}
+	}
+	sqlite3_free(sql);
+
+	sql = sqlite3_mprintf("INSERT INTO metadata (name, value) VALUES ('generator_options', %Q);", commandline.c_str());
+	if (sqlite3_exec(db, sql, NULL, NULL, &err) != SQLITE_OK) {
+		fprintf(stderr, "set commandline: %s\n", err);
 		if (!forcetable) {
 			exit(EXIT_FAILURE);
 		}
@@ -383,7 +394,7 @@ void mbtiles_write_metadata(sqlite3 *outdb, const char *outdir, const char *fnam
 	sqlite3_free(sql);
 
 	if (vector) {
-		size_t elements = 100;
+		size_t elements = max_tilestats_values;
 		std::string buf;
 
 		{
@@ -495,7 +506,6 @@ void mbtiles_write_metadata(sqlite3 *outdb, const char *outdir, const char *fnam
 			state.json_write_newline();
 
 			sqlite3_stmt *stmt;
-			bool first = true;
 			if (sqlite3_prepare_v2(db, "SELECT name, value from metadata;", -1, &stmt, NULL) == SQLITE_OK) {
 				while (sqlite3_step(stmt) == SQLITE_ROW) {
 					std::string key, value;
@@ -510,7 +520,6 @@ void mbtiles_write_metadata(sqlite3 *outdb, const char *outdir, const char *fnam
 					state.json_comma_newline();
 					state.json_write_string(k);
 					state.json_write_string(v);
-					first = false;
 				}
 				sqlite3_finalize(stmt);
 			}
@@ -591,7 +600,7 @@ std::map<std::string, layermap_entry> merge_layermaps(std::vector<std::map<std::
 						if (pt == fk2->second.sample_values.end() || *pt != val) {  // not found
 							fk2->second.sample_values.insert(pt, val);
 
-							if (fk2->second.sample_values.size() > 1000) {
+							if (fk2->second.sample_values.size() > max_tilestats_sample_values) {
 								fk2->second.sample_values.pop_back();
 							}
 						}
@@ -655,7 +664,7 @@ void add_to_file_keys(std::map<std::string, type_and_string_stats> &file_keys, s
 	if (pt == fka->second.sample_values.end() || *pt != val) {  // not found
 		fka->second.sample_values.insert(pt, val);
 
-		if (fka->second.sample_values.size() > 1000) {
+		if (fka->second.sample_values.size() > max_tilestats_sample_values) {
 			fka->second.sample_values.pop_back();
 		}
 	}

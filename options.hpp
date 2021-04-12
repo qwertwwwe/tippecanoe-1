@@ -23,9 +23,12 @@
 #define A_EXTEND_ZOOMS ((int) 'e')
 #define A_CLUSTER_DENSEST_AS_NEEDED ((int) 'C')
 #define A_GENERATE_IDS ((int) 'i')
+#define A_CONVERT_NUMERIC_IDS ((int) 'I')
+#define A_HILBERT ((int) 'h')
 
 #define P_SIMPLIFY ((int) 's')
 #define P_SIMPLIFY_LOW ((int) 'S')
+#define P_SIMPLIFY_SHARED_NODES ((int) 'n')
 #define P_FEATURE_LIMIT ((int) 'f')
 #define P_KILOBYTE_LIMIT ((int) 'k')
 #define P_DYNAMIC_DROP ((int) 'd')
